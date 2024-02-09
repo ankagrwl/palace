@@ -13,3 +13,4 @@ Manifest.toml
 *.csv
 *.vtu
 *.pvtu
+*.msh
