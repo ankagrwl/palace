@@ -1,0 +1,72 @@
+>> /home/ANT.AMAZON.COM/ankagrwl/spack/opt/spack/linux-ubuntu22.04-skylake/gcc-11.4.0/openmpi-5.0.1-nielszzf2k4ltgps47ar2sx463zr4mb4/bin/mpirun -n 1 /home/ANT.AMAZON.COM/ankagrwl/spack/opt/spack/linux-ubuntu22.04-skylake/gcc-11.4.0/palace-0.12.0-2uw2nemn3im5ewejard4h6rzgvrdfdz5/bin/palace-x86_64.bin /home/ANT.AMAZON.COM/ankagrwl/palace/scripts/ankagrwl/temporary/capacitance_palace.json
+
+_____________     _______
+_____   __   \____ __   /____ ____________
+____   /_/  /  __ ` /  /  __ ` /  ___/  _ \
+___   _____/  /_/  /  /  /_/  /  /__/  ___/
+  /__/     \___,__/__/\___,__/\_____\_____/
+
+Git changeset ID: v0.12.0
+Running with 1 MPI process
+Device configuration: cpu
+Memory configuration: host-std
+libCEED backend: /cpu/self/xsmm/blocked
+
+Finished partitioning mesh into 1 subdomain
+
+Warning!
+One or more external boundary attributes has no associated boundary condition!
+"PMC"/"ZeroCharge" condition is assumed!
+
+Removed 16735 unmarked domain elements from the mesh
+Removed 218 unattached boundary elements from the mesh
+
+Characteristic length and time scales:
+ L₀ = 1.200e-03 m, t₀ = 4.003e-03 ns
+
+Mesh curvature order: 1
+Mesh bounding box:
+ (Xmin, Ymin, Zmin) = (-2.000e-04, -2.000e-04, +0.000e+00) m
+ (Xmax, Ymax, Zmax) = (+2.000e-04, +2.000e-04, +1.200e-03) m
+
+Parallel Mesh Stats:
+
+                minimum     average     maximum       total
+ vertices         17503       17503       17503       17503
+ edges           108505      108505      108505      108505
+ faces           173754      173754      173754      173754
+ elements         82749       82749       82749       82749
+ neighbors            0           0           0
+
+            minimum     maximum
+ h      0.000725174   0.0537787
+ kappa      1.02083     22.9634
+
+
+Warning!
+Unknown ground boundary attribute 1!
+Solver will just ignore it!
+
+
+Warning!
+Unknown ground boundary attribute 13!
+Solver will just ignore it!
+
+
+Configuring Dirichlet BC at attributes:
+ 1, 6-11, 13
+
+Assembling system matrices, number of global unknowns:
+ H1 (p = 1): 17503, ND (p = 1): 108505
+ Operator assembly level: Full
+ Default integration order: 2
+ Mesh geometries:
+  Tetrahedron: P = 4, Q = 4
+
+Assembling multigrid hierarchy:
+ Level 0 (p = 1): 17503 unknowns, 234513 NNZ
+
+Computing electrostatic fields for 2 terminal boundaries
+
+It 1/2: Index = 1 (elapsed time = 2.80e-08 s)
+

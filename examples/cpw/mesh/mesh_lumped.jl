@@ -126,6 +126,9 @@ function generate_coplanar_waveguide_lumped_mesh(;
 
     kernel.synchronize()
 
+    print(geom_dimtags)
+    print(geom_map)
+
     # Add physical groups
     si_domain = geom_map[findfirst(x -> x == (3, substrate), geom_dimtags)]
     @assert length(si_domain) == 1
@@ -211,7 +214,7 @@ function generate_coplanar_waveguide_lumped_mesh(;
                 )
             )
         )
-
+    print(farfield)
     farfield_group = gmsh.model.addPhysicalGroup(2, farfield, -1, "farfield")
 
     # Generate mesh
@@ -290,3 +293,4 @@ function generate_coplanar_waveguide_lumped_mesh(;
 
     return gmsh.finalize()
 end
+generate_coplanar_waveguide_lumped_mesh(filename = "test.msh")

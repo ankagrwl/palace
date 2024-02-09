@@ -1,0 +1,83 @@
+{
+    "Problem": {
+        "Type": "Electrostatic",
+        "Verbose": 3,
+        "Output": "postpro"
+    },
+    "Model": {
+        "Mesh": "capacitance_palace$1.msh",
+        "L0": 1e-06
+    },
+    "Domains": {
+        "Materials": [
+            {
+                "Attributes": [
+                    4
+                ],
+                "Permittivity": 11.45
+            },
+            {
+                "Attributes": [
+                    5
+                ],
+                "Permittivity": 1
+            }
+        ]
+    },
+    "Boundaries": {
+        "Ground": {
+            "Attributes": [
+                7,
+                13,
+                1,
+                6
+            ]
+        },
+        "Terminal": [
+            {
+                "Index": 1,
+                "Attributes": [
+                    8,
+                    9
+                ]
+            },
+            {
+                "Index": 2,
+                "Attributes": [
+                    11,
+                    10
+                ]
+            }
+        ],
+        "Postprocessing": {
+            "Capacitance": [
+                {
+                    "Index": 1,
+                    "Attributes": [
+                        8,
+                        9
+                    ]
+                },
+                {
+                    "Index": 2,
+                    "Attributes": [
+                        11,
+                        10
+                    ]
+                }
+            ]
+        }
+    },
+    "Solver": {
+        "Order": 1,
+        "Electrostatic": {
+            "Save": 2
+        },
+        "Linear": {
+            "Type": "BoomerAMG",
+            "KSPType": "CG",
+            "Tol": 1e-08,
+            "MaxIts": 100
+        }
+    }
+}
