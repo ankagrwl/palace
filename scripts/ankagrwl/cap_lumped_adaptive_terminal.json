@@ -7,7 +7,7 @@
   },
   "Model":
   {
-    "Mesh": "finger_cap.msh",
+    "Mesh": "mesh/finger_cap.msh",
     "L0": 1.0e-6,  // μm
     "Refinement": {}
   },
@@ -22,11 +22,10 @@
         "LossTan": 0.0
       },
       {
-        "Attributes": [1],  // Sapphire
-        "Permeability": [0.99999975, 0.99999975, 0.99999979],
-        "Permittivity": [9.3, 9.3, 11.5],
-        "LossTan": [3.0e-5, 3.0e-5, 8.6e-5],
-        "MaterialAxes": [[0.8, 0.6, 0.0], [-0.6, 0.8, 0.0], [0.0, 0.0, 1.0]]
+        "Attributes": [1],  // Si
+        "Permeability": 1,
+        "Permittivity": 3.05,
+        "LossTan": 0
       }
     ],
     "Postprocessing":
@@ -112,8 +111,8 @@
     "Order": 2,
     "Driven":
     {
-      "MinFreq": 2.0,  // GHz
-      "MaxFreq": 30.0,  // GHz
+      "MinFreq": 0.2,  // GHz
+      "MaxFreq": 8.2,  // GHz
       "FreqStep": 0.1,  // GHz
       "SaveStep": 40,
       "AdaptiveTol": 1.0e-3

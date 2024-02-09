@@ -2,6 +2,8 @@ import gmsh
 import sys
 import os
 
+current_dir = os.path.dirname(__file__)
+print(current_dir)
 
 refinement: int = 1
 trace_width_μm: float  = 30.0
@@ -23,21 +25,17 @@ if "cpw" in gmsh.model.list():
     gmsh.model.remove()
 gmsh.model.add("cpw")
 
-# Substrate/chip dimensions
-substrate_w = 400 #7mm
-substrate_l = 400
-substrate_h = 500
 
-sep_dz = 500.0
-sep_dy = 0.5 * sep_dz
+num_fingers = 4
+finger_l = 50 * 25.4
+finger_w = 10 * 25.4
+finger_gap = 10 * 25.4
+l = finger_gap + finger_l + 2* finger_w
+w = (2* num_fingers) * finger_w + (2*num_fingers-1) * finger_gap
 
-
-def finger_block(num_fingers, finger_l, finger_w, finger_gap):
-    l = finger_gap + finger_l + 2* finger_w
-    w = (2* num_fingers) * finger_w + (2*num_fingers-1) * finger_gap
-
-    dx = substrate_l/2 -l/2
-    dy = substrate_w/2 - w/2
+def finger_block(starting_coord, num_fingers, finger_l, finger_w, finger_gap):
+    """Eventually may want to pass dx and dy as an input"""
+    dx, dy = starting_coord
 
     left_g1 = kernel.addRectangle(dx, dy, 0.0, finger_w, w)
     dy += w
@@ -66,23 +64,80 @@ def finger_block(num_fingers, finger_l, finger_w, finger_gap):
     return temp_left, temp_right
 
 
-num_fingers = 13
-finger_l = 20
-finger_w = 5
-finger_gap = 2
-l = finger_gap + finger_l + 2* finger_w
-w = (2* num_fingers) * finger_w + (2*num_fingers-1) * finger_gap
+def meander(starting_coord, height, gap_width, trace_width, num_periods):
 
-left, right = finger_block(num_fingers, finger_l, finger_w, finger_gap)
+    dx, dy = starting_coord
+
+    period_length = 2 * gap_width + 3 * trace_width
+
+    temp = []
+
+    for ii in range(num_periods):
+        x = dx + ii * period_length
+        y = dy 
+        t = kernel.addRectangle(x, y, 0, trace_width, height + trace_width)
+        temp.append(t)
+
+        x += trace_width
+        y += height
+
+        t=kernel.addRectangle(x, y, 0, gap_width, trace_width)
+        temp.append(t)
+
+        x += gap_width
+        y += trace_width
+
+        t=kernel.addRectangle(x, y, 0, trace_width, -2 * (trace_width + height))
+        temp.append(t)
+
+        x += trace_width
+        y -= 2 * (height + trace_width)
+
+        t=kernel.addRectangle(x, y, 0, gap_width, trace_width)
+        temp.append(t)
+
+        x += gap_width
+        t=kernel.addRectangle(x, y, 0, trace_width, trace_width + height)
+        temp.append(t)
+
+        y += trace_width + height
+        print(x, y)
+
+    return temp
+
+
+# Substrate/chip dimensions
+# substrate_w = w + 2 * l
+# substrate_l = 4 * l
+substrate_w = 7000
+substrate_l = 12000
+
+substrate_h = 20 * 25.4
+
+sep_dz = substrate_h
+sep_dy = sep_dz
+
+x0 = substrate_l/2 -l/2 
+y0 = substrate_w/2 - w/2
+
+left, right = finger_block([x0, y0], num_fingers, finger_l, finger_w, finger_gap)
 left = [(2, m) for m in left]
 right = [(2, m) for m in right]
 
+height = 20 * 25.4
+gap_width = 10 * 25.4
+trace_width = 10 * 25.4
+num_periods = 3
+
+meander_tags = meander([x0 + l + l/2, substrate_w/2], height, gap_width, trace_width, num_periods)
+meander_tags = [(2, m) for m in meander_tags]
+
 print(left)
 print(right)
-
+print(meander_tags)
 
 # Mesh parameters
-l_trace = 1.5 * finger_w * 2**(-refinement)
+l_trace = 1.0 * finger_w * 2**(-refinement)
 l_farfield = 1.0 * substrate_h * 2**(-refinement)
 
 # Substrate
@@ -147,7 +202,7 @@ air_domain_group = gmsh.model.addPhysicalGroup(3, [air_domain], -1, "air")
 
 
 metal = []
-temp_metal = left + right
+temp_metal = left + right + meander_tags
 
 temp = [geom_map[i] for i, x in enumerate(geom_dimtags) if x in temp_metal]
 metal = [int(m[0][-1]) for m in temp]
@@ -222,7 +277,11 @@ gmsh.model.mesh.setOrder(1)
 gmsh.option.setNumber("Mesh.MshFileVersion", 2.2)
 gmsh.option.setNumber("Mesh.Binary", 0)
 
+
+filename = current_dir + '/mesh/' + filename
+
 print(filename)
+
 gmsh.write(filename)
 
 # Launch the GUI to see the results:
