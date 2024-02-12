@@ -25,14 +25,6 @@ if "cpw" in gmsh.model.list():
     gmsh.model.remove()
 gmsh.model.add("cpw")
 
-
-num_fingers = 4
-finger_l = 50 * 25.4
-finger_w = 10 * 25.4
-finger_gap = 10 * 25.4
-l = finger_gap + finger_l + 2* finger_w
-w = (2* num_fingers) * finger_w + (2*num_fingers-1) * finger_gap
-
 def finger_block(starting_coord, num_fingers, finger_l, finger_w, finger_gap):
     """Eventually may want to pass dx and dy as an input"""
     dx, dy = starting_coord
@@ -71,11 +63,23 @@ def meander(starting_coord, height, gap_width, trace_width, num_periods):
     period_length = 2 * gap_width + 3 * trace_width
 
     temp = []
+    x = dx
+    y = dy - trace_width/2
+
+    # Left connecting section
+    t = kernel.addRectangle(x, y, 0, gap_width + trace_width, trace_width)
+    temp.append(t)
+
+    x += gap_width
+    y += trace_width/2
 
     for ii in range(num_periods):
-        x = dx + ii * period_length
-        y = dy 
-        t = kernel.addRectangle(x, y, 0, trace_width, height + trace_width)
+        if ii==0:
+
+            t = kernel.addRectangle(x, y + 0.5*trace_width, 0, trace_width, height + 0.5*trace_width)
+        else:
+            t = kernel.addRectangle(x, y, 0, trace_width, height + trace_width)
+
         temp.append(t)
 
         x += trace_width
@@ -97,11 +101,19 @@ def meander(starting_coord, height, gap_width, trace_width, num_periods):
         temp.append(t)
 
         x += gap_width
-        t=kernel.addRectangle(x, y, 0, trace_width, trace_width + height)
+
+        if ii == (num_periods-1):
+            t=kernel.addRectangle(x, y, 0, trace_width, 0.5*trace_width + height)
+        else:    
+            t=kernel.addRectangle(x, y, 0, trace_width, trace_width + height)
         temp.append(t)
 
         y += trace_width + height
-        print(x, y)
+
+    # Right connecting section
+    y -= trace_width/2
+    t = kernel.addRectangle(x, y, 0, gap_width + trace_width, trace_width)
+    temp.append(t)
 
     return temp
 
@@ -117,24 +129,58 @@ substrate_h = 20 * 25.4
 sep_dz = substrate_h
 sep_dy = sep_dz
 
-x0 = substrate_l/2 -l/2 
-y0 = substrate_w/2 - w/2
 
-left, right = finger_block([x0, y0], num_fingers, finger_l, finger_w, finger_gap)
+# Finger capacitor dimensions
+num_fingers = 4
+finger_l = 50 * 25.4
+finger_w = 10 * 25.4
+finger_gap = 10 * 25.4
+l = finger_gap + finger_l + 2* finger_w
+w = (2* num_fingers) * finger_w + (2*num_fingers-1) * finger_gap
+
+# Meander dimensions
+height = 20 * 25.4
+gap_width = 10 * 25.4
+trace_width = 5 * 25.4
+num_periods = 3
+
+meander_length = num_periods * (2 * gap_width + 3 * trace_width) + (2 * gap_width - 2 * trace_width)
+
+print(f'Length of inductor section is {meander_length} μm')
+# Starting from left and adding each component
+
+# Port 1
+port_w = 2 * finger_w
+
+dx = 0.0
+dy = substrate_w/2- port_w/2
+
+port_l = substrate_l/2 -l/2 - meander_length/2
+
+p1 = kernel.addRectangle(0.0, dy, 0.0, port_l, port_w)
+
+# Finger capacitors
+dx += port_l
+dy = substrate_w/2 - w/2
+
+left, right = finger_block([dx, dy], num_fingers, finger_l, finger_w, finger_gap)
 left = [(2, m) for m in left]
 right = [(2, m) for m in right]
 
-height = 20 * 25.4
-gap_width = 10 * 25.4
-trace_width = 10 * 25.4
-num_periods = 3
 
-meander_tags = meander([x0 + l + l/2, substrate_w/2], height, gap_width, trace_width, num_periods)
-meander_tags = [(2, m) for m in meander_tags]
+dx += l
+dy = substrate_w/2
+# Inductor
+meander_tags = meander([dx, dy], height, gap_width, trace_width, num_periods)
+if not len(meander_tags) ==0:
+    meander_tags = [(2, m) for m in meander_tags]
+else:
+    meander_tags = [()]
 
-print(left)
-print(right)
-print(meander_tags)
+# Port 2
+dx = substrate_l - port_l
+dy -= port_w/2
+p2 = kernel.addRectangle(dx, dy, 0.0, port_l, port_w)
 
 # Mesh parameters
 l_trace = 1.0 * finger_w * 2**(-refinement)
@@ -162,21 +208,10 @@ domain = kernel.addBox(
 
 _, domain_boundary = kernel.getSurfaceLoops(domain)
 domain_boundary = domain_boundary[0]
-print(domain_boundary)
-
-# Ports
-port_w = 2 * finger_w
-dx = 0.0
-dy = substrate_w/2- port_w/2
-
-p1 = kernel.addRectangle(0.0, dy, 0.0, substrate_l/2 -l/2, port_w)
-dx += (substrate_l/2 + l/2)
-p2 = kernel.addRectangle(dx, dy, 0.0, substrate_l/2 -l/2, port_w)
 
 #Gap
 g = kernel.addRectangle(0, 0, 0, substrate_l, substrate_w)
-gap = kernel.cut([(2, g)], left + right + [(2, p1)] + [(2, p2)], removeObject=True, removeTool=False)[0]
-print(gap)
+gap = kernel.cut([(2, g)], left + right + meander_tags + [(2, p1)] + [(2, p2)], removeObject=True, removeTool=False)[0]
 
 # Embedding
 f = lambda x: (x[0]==2 or x[0]==3)
@@ -187,19 +222,13 @@ _, geom_map = kernel.fragment(geom_dimtags, [])
 
 kernel.synchronize()
 
-print(geom_dimtags)
-print(geom_map)
-
 # Add physical groups
 si_domain = [t[-1] for t in geom_map[geom_dimtags.index((3, substrate))]][0]
 
 air_domain = [t[-1] for t in geom_map[geom_dimtags.index((3, domain))] if t!=(3, si_domain)][0]
 
-# print(domain, si_domain, air_domain)
-
 si_domain_group = gmsh.model.addPhysicalGroup(3, [si_domain], -1, "si")
 air_domain_group = gmsh.model.addPhysicalGroup(3, [air_domain], -1, "air")
-
 
 metal = []
 temp_metal = left + right + meander_tags
@@ -208,7 +237,7 @@ temp = [geom_map[i] for i, x in enumerate(geom_dimtags) if x in temp_metal]
 metal = [int(m[0][-1]) for m in temp]
 
 metal_group = gmsh.model.addPhysicalGroup(2, metal, -1, "metal")
-
+print(metal_group)
 
 port1 = [g[-1] for g in geom_map[geom_dimtags.index((2, p1))]]
 port2 = [g[-1] for g in geom_map[geom_dimtags.index((2, p2))]]

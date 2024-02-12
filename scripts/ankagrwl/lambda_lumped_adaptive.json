@@ -1,0 +1,137 @@
+{
+  "Problem":
+  {
+    "Type": "Driven",
+    "Verbose": 2,
+    "Output": "postpro/lumped_adaptive"
+  },
+  "Model":
+  {
+    "Mesh": "mesh/lambda_resonator.msh",
+    "L0": 1.0e-6,  // μm
+    "Refinement": {}
+  },
+  "Domains":
+  {
+    "Materials":
+    [
+      {
+        "Attributes": [2],  // Air
+        "Permeability": 1.0,
+        "Permittivity": 1.0,
+        "LossTan": 0.0
+      },
+      {
+        "Attributes": [1],  // Si
+        "Permeability": 1,
+        "Permittivity": 12.0,
+        "LossTan": 0
+      }
+    ],
+    "Postprocessing":
+    {
+      "Energy":
+      [
+        {
+          "Index": 1,
+          "Attributes": [1]
+        }
+      ],
+      "Probe":
+      [
+        {
+          "Index": 1,
+          "X": 2000,
+          "Y": 833,
+          "Z": 30
+        },
+        {
+          "Index": 2,
+          "X": 2000,
+          "Y": 833,
+          "Z": -30
+        }
+      ]
+    }
+  },
+  "Boundaries":
+  {
+    "PEC":
+    {
+      "Attributes": [3]  // Metal trace
+    },
+    "Absorbing":
+    {
+      "Attributes": [9],
+      "Order": 1
+    },
+    "LumpedPort":
+    [
+      {
+        "Index": 1,
+        "R": 50.00,  // Ω, 2-element uniform
+        "Excitation": true,
+        "Elements":
+        [
+          {
+            "Attributes": [4],
+            "Direction": "+Y"
+          },
+          {
+            "Attributes": [6],
+            "Direction": "-Y"
+          }
+        ]
+      },
+      {
+        "Index": 2,
+        "R": 50.00,
+        "Elements":
+        [
+          {
+            "Attributes": [5],
+            "Direction": "+Y"
+          },
+          {
+            "Attributes": [7],
+            "Direction": "-Y"
+          }
+        ]
+      }
+    ],
+    "Postprocessing":
+    {
+      "Dielectric":
+      [
+        {
+          "Index": 1,
+          "Attributes": [8],
+          "Side": "+Z",
+          "Thickness": 2e-3,  // μm
+          "PermittivitySA": 4.0,
+          "LossTan": 1.0
+        }
+      ]
+    }
+  },
+  "Solver":
+  {
+    "Order": 2,
+    "Driven":
+    {
+      "MinFreq": 2.0,  // GHz
+      "MaxFreq": 30.0,  // GHz
+      "FreqStep": 1.0,  // GHz
+      "SaveStep": 40,
+      "AdaptiveTol": 1.0e-3
+    },
+    "Linear":
+    {
+      "Type": "Default",
+      "KSPType": "GMRES",
+      "Tol": 1.0e-8,
+      "MaxIts": 100
+    }
+  }
+}
+
