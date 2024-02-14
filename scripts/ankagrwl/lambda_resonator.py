@@ -81,12 +81,12 @@ def generate_coplanar_waveguide_lumped_mesh(
     dy += ground_width_μm
 
     # Making the coupling capacitor symmetrically on each side
-    resonance_freq = 5e9 #GHz
+    resonance_freq = 10e9 #GHz
     quarter_length_μm = 1e6*(3e8/resonance_freq)/np.sqrt(12) //2 #in μm
 
     print(quarter_length_μm)
 
-    cap_gap_μm = 10
+    cap_gap_μm = 5
     x0 = 0
     y0 = ground_width_μm + gap_width_μm
     cap_length_μm = substrate_length_μm/2 - quarter_length_μm/2 - cap_gap_μm
