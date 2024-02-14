@@ -74,11 +74,14 @@ def generate_coplanar_waveguide_lumped_mesh(
     g1 = kernel.addRectangle(0.0, dy, 0.0, substrate_length_μm, ground_width_μm)
     dy += ground_width_μm
     n1 = kernel.addRectangle(0.0, dy, 0.0, substrate_length_μm, gap_width_μm)
-    dy += (gap_width_μm + trace_width_μm)
+    dy += gap_width_μm
+    t1 = kernel.addRectangle(0.0, dy, 0.0, substrate_length_μm, trace_width_μm)
+    dy += trace_width_μm
     n2 = kernel.addRectangle(0.0, dy, 0.0, substrate_length_μm, gap_width_μm)
     dy += gap_width_μm
     g2 = kernel.addRectangle(0.0, dy, 0.0, substrate_length_μm, ground_width_μm)
     dy += ground_width_μm
+
 
     # Making the coupling capacitor symmetrically on each side
     resonance_freq = 5e9 #GHz
@@ -91,15 +94,19 @@ def generate_coplanar_waveguide_lumped_mesh(
     y0 = ground_width_μm + gap_width_μm
     cap_length_μm = substrate_length_μm/2 - quarter_length_μm/2 - cap_gap_μm
 
-    c1 = kernel.addRectangle(x0, y0, 0.0, cap_length_μm , trace_width_μm)
+    # c1 = kernel.addRectangle(x0, y0, 0.0, cap_length_μm , trace_width_μm)
     x0 += cap_length_μm
     n3 = kernel.addRectangle(x0, y0, 0.0, cap_gap_μm, trace_width_μm)
     x0 += cap_gap_μm
-    t1 = kernel.addRectangle(x0, y0, 0.0, quarter_length_μm, trace_width_μm)
+    # t1 = kernel.addRectangle(x0, y0, 0.0, quarter_length_μm, trace_width_μm)
     x0 += quarter_length_μm
     n4 = kernel.addRectangle(x0, y0, 0.0, cap_gap_μm, trace_width_μm)
     x0 += cap_gap_μm
-    c2 = kernel.addRectangle(x0, y0, 0.0, cap_length_μm, trace_width_μm)
+    # c2 = kernel.addRectangle(x0, y0, 0.0, cap_length_μm, trace_width_μm)
+
+    print(n3, n4)
+    t1 = kernel.cut([(2, t1)], [(2, n3), (2, n4)], removeObject=False, removeTool=False)[0]
+    print(t1, n3, n4)
 
     # Substrate
     substrate = kernel.addBox(
@@ -150,7 +157,7 @@ def generate_coplanar_waveguide_lumped_mesh(
     si_domain_group = gmsh.model.addPhysicalGroup(3, [si_domain], -1, "si")
     air_domain_group = gmsh.model.addPhysicalGroup(3, [air_domain], -1, "air")
 
-    m_list = [(2, g1), (2, g2), (2, t1), (2, c1), (2, c2)]
+    m_list = [(2, g1), (2, g2)] + t1
     metal = []
 
     temp = [geom_map[i] for i, x in enumerate(geom_dimtags) if x in m_list]
