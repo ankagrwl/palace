@@ -57,15 +57,15 @@ def generate_coplanar_waveguide_lumped_mesh(
         gmsh.model.remove()
     gmsh.model.add("cpw")
     
-    sep_dz = 1000.0
+    sep_dz = 2000.0
     sep_dy = 0.5 * sep_dz
 
     # Mesh parameters
     l_trace = 1.5 * trace_width_μm * 2**(-refinement)
     l_farfield = 1.0 * substrate_height_μm * 2**(-refinement)
 
-    substrate_width_μm = 6000
-    substrate_length_μm = 12000
+    substrate_width_μm = 3000
+    substrate_length_μm = 7000
 
     ground_width_μm = (substrate_width_μm - 2 * gap_width_μm - trace_width_μm) // 2
 
@@ -85,7 +85,7 @@ def generate_coplanar_waveguide_lumped_mesh(
 
     # Making the coupling capacitor symmetrically on each side
     resonance_freq = 10e9 #GHz
-    quarter_length_μm = 1e6*(3e8/resonance_freq)/np.sqrt(12) //2 #in μm
+    quarter_length_μm = 1e6*(3e8/resonance_freq)/np.sqrt(np.mean(12+1)) //2 #in μm
 
     print(quarter_length_μm)
 
@@ -270,4 +270,4 @@ def generate_coplanar_waveguide_lumped_mesh(
 
 
 filename = "lambda_resonator.msh"
-generate_coplanar_waveguide_lumped_mesh(filename=filename, refinement=0)
+generate_coplanar_waveguide_lumped_mesh(filename=filename, refinement=1)

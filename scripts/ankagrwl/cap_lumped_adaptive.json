@@ -7,7 +7,7 @@
   },
   "Model":
   {
-    "Mesh": "finger_cap.msh",
+    "Mesh": "mesh/finger_cap.msh",
     "L0": 1.0e-6,  // μm
     "Refinement": {}
   },
@@ -24,7 +24,7 @@
       {
         "Attributes": [1],  // Si
         "Permeability": 1,
-        "Permittivity": 11.2,
+        "Permittivity": 3.05,
         "LossTan": 0
       }
     ],
@@ -75,7 +75,11 @@
         [
           {
             "Attributes": [4],
-            "Direction": "+X"
+            "Direction": "+Y"
+          },
+          {
+            "Attributes": [6],
+            "Direction": "-Y"
           }
         ]
       },
@@ -86,7 +90,11 @@
         [
           {
             "Attributes": [5],
-            "Direction": "+X"
+            "Direction": "+Y"
+          },
+          {
+            "Attributes": [7],
+            "Direction": "-Y"
           }
         ]
       }
@@ -111,9 +119,9 @@
     "Order": 2,
     "Driven":
     {
-      "MinFreq": 2.0,  // GHz
-      "MaxFreq": 30.0,  // GHz
-      "FreqStep": 2.0,  // GHz
+      "MinFreq": 0.2,  // GHz
+      "MaxFreq": 8.0,  // GHz
+      "FreqStep": 0.5,  // GHz
       "SaveStep": 40,
       "AdaptiveTol": 1.0e-3
     },

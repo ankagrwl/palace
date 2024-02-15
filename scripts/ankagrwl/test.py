@@ -16,19 +16,32 @@ filename: str = 'finger_cap.msh'
 verbose: int = 2
 
 
+kernel = gmsh.model.occ
+gmsh.initialize()
+gmsh.option.setNumber("General.Verbosity", verbose)
+
+# Add model
+if "cpw" in gmsh.model.list():
+    gmsh.model.setCurrent("cpw")
+gmsh.model.remove()
+gmsh.model.add("cpw")
+
+
+
 class LCOscillator:
-    def __init__(self, x0, y0):
+    def __init__(self,
+                 kernel,
+                 x0: float|None, 
+                 y0: float|None, 
+                 cap_block_length: float|None, 
+                 cap_block_width: float|None, 
+                 inductor_length: float|None):
         self.x = x0
         self.y = y0
-        self.kernel = gmsh.model.occ
-        gmsh.initialize()
-        gmsh.option.setNumber("General.Verbosity", verbose)
-
-        # Add model
-        if "cpw" in gmsh.model.list():
-            gmsh.model.setCurrent("cpw")
-        gmsh.model.remove()
-        gmsh.model.add("cpw")
+        self.kernel = kernel
+        self.cap_block_length = cap_block_length
+        self.cap_block_width = cap_block_width
+        self.inductor_length = inductor_length
 
     def add_substrate(self, substrate_length, substrate_width, substrate_height):
         """
@@ -77,8 +90,8 @@ class LCOscillator:
             domain_boundary: tag representing the domain boundary
 
         Example:
-            domain, domain_boundary = add_domain(10, 10, 10)
-            Creates a domain with initial certex (0, 0, -10)
+            domain, domain_boundary = add_domain(100, 100, 10)
+            Creates a domain with initial vertex (0, 0, -10)
             and dimensions (100, 50, 10) along the positive (x, y, z) direction
 
         """
@@ -105,14 +118,15 @@ class LCOscillator:
         self.num_fingers = num_fingers
 
         self.cap_block_length = finger_gap + finger_l + 2* finger_w
-        self.cap_block_width = (2* num_fingers) * finger_w + (2*num_fingers-1) * finger_gap
+        self.cap_block_width = (2 * num_fingers) * finger_w + (2 * num_fingers-1) * finger_gap
 
-        self.left_fingers, self.right_fingers = self.finger_cap_n((self.x, self.y - self.cap_block_width/2),
+        self.left_fingers, self.right_fingers = self.finger_cap_n((self.x - self.cap_block_length/2, self.y - self.cap_block_width/2),
                                                                    self.num_fingers, 
                                                                    self.finger_l, 
                                                                    self.finger_w, 
                                                                    self.finger_gap)
-        
+        return self.left_fingers, self.right_fingers
+    
     def finger_cap_n(self, 
                      starting_coord,
                      num_fingers: int = None, 
@@ -138,7 +152,7 @@ class LCOscillator:
 
             Creates a block with 2 fingers of length 10, width 1, and gap 2.
             The block bottom left corner is at (0, 0).
-            It updates the global (x, y) --> (right most coorinate along x, center of the capcitor block along y)
+            It updates the global (x, y) --> (right most coordinate along x, center of the capacitor block along y)
             coordinates of the layout for further usage
             and returns the left and right fingers as lists.        
         
@@ -157,7 +171,7 @@ class LCOscillator:
             temp_left.append(t)
 
         dx += (finger_l + finger_gap)
-        dy -= (finger_gap + finger_w)
+        dy += (finger_gap )
 
         right_g1 = self.kernel.addRectangle(dx, dy, 0.0, finger_w, self.cap_block_width)
         temp_right = []
@@ -205,7 +219,7 @@ class LCOscillator:
             Creates a meander with 3 width, 1 gap, and 2 periods. Add leads of length 3 and width 1
             on each side.
             The meander center left starts at (0, 0).
-            It updates the global (x, y) --> (right most coorinate along x, center of the inductor along y)
+            It updates the global (x, y) --> (right most coordinate along x, center of the inductor along y)
             coordinates of the layout for further usage
             and returns the meander as a list of gmsh.model.occ.addRectangle() objects
         
@@ -214,7 +228,7 @@ class LCOscillator:
 
         dx, dy = starting_coord
 
-        period_length = 2 * inductor_width + 3 * inductor_gap
+        self.inductor_length = (2 * inductor_width + 3 * inductor_gap) * num_periods
 
         temp = []
         dy = dy - inductor_gap/2
@@ -288,7 +302,7 @@ class LCOscillator:
 
             Creates a port with 2 width, 10 length.
             The port bottom left corner starts at (0, 0).
-            It updates the global (x, y) --> (right most coorinate along x, center of the port along y)
+            It updates the global (x, y) --> (right most coordinate along x, center of the port along y)
             coordinates of the layout for further usage
             and returns the port as a gmsh.model.occ.addRectangle() object
         """
@@ -298,99 +312,85 @@ class LCOscillator:
         self.y = starting_coord[1] + port_w/2
         return p
     
+    def ground_plane(self, cpw_gap, port_l, port_w):
+        dx = 0
+        dy = self.substrate_width/2 + port_w/2 + cpw_gap
 
-"""
-substrate_w = 7000
-substrate_l = 7000
-substrate_h = 20 * 25.4
+        temp = []
 
-pad_z = substrate_h
-pad_y = 0.1* pad_z
-pad_x = pad_y
+        t = self.kernel.addRectangle(dx, dy, 0, (port_l), (self.substrate_width - port_w - 2*cpw_gap)/2)
+        temp.append(t)
+        t = self.kernel.addRectangle(dx, 0, 0, (port_l), (self.substrate_width - port_w - 2*cpw_gap)/2)
+        temp.append(t)
 
+        dx += port_l
+        dy = self.substrate_width
 
-# Finger capacitor dimensions
-num_fingers = 4
-finger_l = 50 * 25.4
-finger_w = 10 * 25.4
-finger_gap = 10 * 25.4
-l = finger_gap + finger_l + 2* finger_w
-w = (2* num_fingers) * finger_w + (2*num_fingers-1) * finger_gap
+        t = self.kernel.addRectangle(dx, dy, 0, self.substrate_length - 2* port_l, -(self.substrate_width/2 -self.cap_block_width/2 -cpw_gap))
+        temp.append(t)
+        t = self.kernel.addRectangle(dx, 0, 0, self.substrate_length - 2* port_l, (self.substrate_width/2 -self.cap_block_width/2 -cpw_gap))
+        temp.append(t)
 
-# Meander dimensions
-height = 20 * 25.4
-inductor_gap = 10 * 25.4
-inductor_width = 5 * 25.4
-num_periods = 3
+        dx = substrate_length
+        dy = self.substrate_width/2 + port_w/2 + cpw_gap
 
-meander_length = num_periods * (2 * inductor_gap + 3 * inductor_width) + (2 * inductor_gap - 2 * inductor_width)
+        t = self.kernel.addRectangle(dx, dy, 0, -(port_l), (self.substrate_width - port_w - 2*cpw_gap)/2)
+        temp.append(t)
+        t = self.kernel.addRectangle(dx, 0, 0, -(port_l), (self.substrate_width - port_w - 2*cpw_gap)/2)
+        temp.append(t)
 
-print(f'Length of inductor section is {meander_length} μm')
-# Starting from left and adding each component
-
-# Port 1
-port_w = 2 * finger_w
-
-dx = 0.0
-dy = substrate_w/2- port_w/2
-
-port_l = substrate_l/2 -l/2 - meander_length/2
-
-p1 = kernel.addRectangle(0.0, dy, 0.0, port_l, port_w)
-
-# Finger capacitors
-dx += port_l
-dy = substrate_w/2 - w/2
-
-left, right = finger_block([dx, dy], num_fingers, finger_l, finger_w, finger_gap)
-left = [(2, m) for m in left]
-right = [(2, m) for m in right]
+        return temp
 
 
-dx += l
-dy = substrate_w/2
-# Inductor
-meander_tags = meander([dx, dy], height, inductor_gap, inductor_width, num_periods)
-if not len(meander_tags) ==0:
-    meander_tags = [(2, m) for m in meander_tags]
-else:
-    meander_tags = [()]
+# First try to simulate just the fingers in electro statistics
 
-# Port 2
-dx = substrate_l - port_l
-dy -= port_w/2
-p2 = kernel.addRectangle(dx, dy, 0.0, port_l, port_w)
+substrate_height=500
+substrate_length=7000
+substrate_width=7000
 
 # Mesh parameters
-l_trace = 1.0 * finger_w * 2**(-refinement)
-l_farfield = 1.0 * substrate_h * 2**(-refinement)
+l_trace = 1.5 * 20*25.4 * 2**(-refinement)
+l_farfield = 1.0 * substrate_height * 2**(-refinement)
 
-# Substrate
-substrate = kernel.addBox(
-    0.0, 
-    0.0, 
-    -substrate_h,
-    substrate_l, 
-    substrate_w, 
-    substrate_h
-)
+sep_dz = 1000
 
-# Exterior box
-domain = kernel.addBox(
-    -sep_dy,
-    -sep_dy,
-    -substrate_h-sep_dz,
-    substrate_l + 2.0 * sep_dy,
-    substrate_w + 2.0 * sep_dy,
-    substrate_h + 2.0 * sep_dz
-)
+design = LCOscillator(kernel, x0=0.5*substrate_length, y0=0.5*substrate_width, cap_block_length=0, cap_block_width=0, inductor_length=0)
 
-_, domain_boundary = kernel.getSurfaceLoops(domain)
-domain_boundary = domain_boundary[0]
+substrate = design.add_substrate(substrate_height=substrate_height, substrate_length=substrate_length, substrate_width=substrate_width)
+
+domain, domain_boundary = design.add_domain(pad_x=2000, pad_y=2000, pad_z=2000)
+
+left_cap_fingers, right_cap_fingers = design.add_finger_capacitor(finger_l=2*50*25.4, finger_w=20*25.4, finger_gap=4*25.4, num_fingers=2)
+
+cap_block_length = design.cap_block_length
+cap_block_width = design.cap_block_width
+
+port_l = (substrate_length - cap_block_length)/2
+port_w = 20*25.4
+
+cpw_in = design.add_port(starting_coord=(0, substrate_width/2), port_w=port_w, port_l=port_l)
+cpw_out = design.add_port(starting_coord=(substrate_length-port_l, substrate_width/2), port_w=port_w, port_l=port_l)
+
+left_cap_fingers = [(2, m) for m in left_cap_fingers]
+right_cap_fingers = [(2, m) for m in right_cap_fingers]
+
+# Ground plane
+cpw_gap = 4 * 25.4
+gnd = design.ground_plane(cpw_gap=cpw_gap, port_l=port_l - cpw_gap, port_w=port_w)
+gnd = [(2, m) for m in gnd]
+
+# Excitation ports
+p1a = design.add_port(starting_coord=(0, substrate_width/2 + port_w/2 + cpw_gap/2), port_w=cpw_gap, port_l=cpw_gap)
+p2a = design.add_port(starting_coord=(substrate_length-cpw_gap, substrate_width/2 + port_w/2 + cpw_gap/2), port_w=cpw_gap, port_l=cpw_gap)
+
+p1b = design.add_port(starting_coord=(0, substrate_width/2 -port_w/2 - cpw_gap/2), port_w=cpw_gap, port_l=cpw_gap)
+p2b = design.add_port(starting_coord=(substrate_length-cpw_gap, substrate_width/2 -port_w/2 - cpw_gap/2), port_w=cpw_gap, port_l=cpw_gap)
+
+ports = [(2, p1a), (2, p1b), (2, p2a), (2, p2b)]
 
 #Gap
-g = kernel.addRectangle(0, 0, 0, substrate_l, substrate_w)
-gap = kernel.cut([(2, g)], left + right + meander_tags + [(2, p1)] + [(2, p2)], removeObject=True, removeTool=False)[0]
+g = kernel.addRectangle(0, 0, 0, substrate_length, substrate_width)
+gap = kernel.cut([(2, g)], left_cap_fingers + right_cap_fingers + gnd + ports + [(2, cpw_out), (2, cpw_in)] , removeObject=True, removeTool=False)[0]
 
 # Embedding
 f = lambda x: (x[0]==2 or x[0]==3)
@@ -410,7 +410,7 @@ si_domain_group = gmsh.model.addPhysicalGroup(3, [si_domain], -1, "si")
 air_domain_group = gmsh.model.addPhysicalGroup(3, [air_domain], -1, "air")
 
 metal = []
-temp_metal = left + right + meander_tags
+temp_metal = left_cap_fingers + right_cap_fingers + gnd + [(2, cpw_in)] + [(2, cpw_out)]
 
 temp = [geom_map[i] for i, x in enumerate(geom_dimtags) if x in temp_metal]
 metal = [int(m[0][-1]) for m in temp]
@@ -418,13 +418,16 @@ metal = [int(m[0][-1]) for m in temp]
 metal_group = gmsh.model.addPhysicalGroup(2, metal, -1, "metal")
 print(metal_group)
 
-port1 = [g[-1] for g in geom_map[geom_dimtags.index((2, p1))]]
-port2 = [g[-1] for g in geom_map[geom_dimtags.index((2, p2))]]
+port1a = [g[-1] for g in geom_map[geom_dimtags.index((2, p1a))]]
+port2a = [g[-1] for g in geom_map[geom_dimtags.index((2, p2a))]]
 
+port1b = [g[-1] for g in geom_map[geom_dimtags.index((2, p1b))]]
+port2b = [g[-1] for g in geom_map[geom_dimtags.index((2, p2b))]]
 
-port1_group = gmsh.model.addPhysicalGroup(2, port1, -1, "port1")
-port2_group = gmsh.model.addPhysicalGroup(2, port2, -1, "port2")
-
+port1a_group = gmsh.model.addPhysicalGroup(2, port1a, -1, "port1a")
+port2a_group = gmsh.model.addPhysicalGroup(2, port2a, -1, "port2a")
+port1b_group = gmsh.model.addPhysicalGroup(2, port1b, -1, "port1b")
+port2b_group = gmsh.model.addPhysicalGroup(2, port2b, -1, "port2b")
 
 temp = [geom_map[i] for i, x in enumerate(geom_dimtags) if x in gap]
 gap = [m[0][-1] for m in temp]
@@ -507,7 +510,6 @@ if verbose > 0:
     print("Trace negative boundaries: ", gap_group)
 
     print("\nMultielement lumped ports:")
-    print("Port 1: ", port1_group)
-    print("Port 2: ", port2_group)
+    print("Port 1: ", port1a_group, ", ", port1b_group)
+    print("Port 2: ", port2a_group, ", ", port2b_group)
     print()
-"""
